@@ -1,101 +1,189 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { soccerBall, basketball } from "@lucide/lab";
+import React from "react";
+import { X } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+const Modal = ({ isOpen, onClose, markets, selectedSport }) => {
+  const router = useRouter();
+
+  if (!isOpen) return null;
+
+  // Filter markets based on the selected sport
+  const filteredMarkets = markets.filter(market => {
+    if (selectedSport === "futebol") {
+      return market.group === "Soccer";
+    } else if (selectedSport === "basquete") {
+      return market.group === "Basketball";
+    }
+    return true;
+  });
+
+  const handleMarketSelection = (market) => {
+    // Navigate to betting screen with market and sport information
+    router.push(`/betting?market=${encodeURIComponent(market.key)}&sport=${encodeURIComponent(selectedSport)}`);
+  };
+  console.log(filteredMarkets)
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="relative bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900">
+          <h2 className="text-2xl font-bold text-white">Selecione um mercado</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-400 hover:text-white"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+        {/* Market List */}
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          <div className="grid gap-4">
+            {filteredMarkets.map((market) => (
+              <Card
+                key={market.key}
+                className="bg-gray-900 border-gray-700 hover:border-indigo-300 transition-colors duration-200"
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-semibold text-white">
+                        {market.title}
+                      </h3>
+                      <p className="text-sm text-gray-400">
+                        {market.description}
+                      </p>
+                    </div>
+                    <Button 
+                      className="bg-indigo-800 hover:bg-indigo-700 text-white font-semibold"
+                      onClick={() => handleMarketSelection(market)}
+                    >
+                      Select
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-700 bg-gray-900">
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function SportSelection() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [markets, setMarkets] = useState([]);
+  const [selectedSport, setSelectedSport] = useState(""); // Track selected sport
+
+  const handleSportSelection = (sport) => {
+    console.log(`Selected sport: ${sport}`);
+    setSelectedSport(sport); // Set the selected sport
+    setIsModalOpen(true);
+  };
+  
+  useEffect(() => {
+    if (isModalOpen) {
+      fetch("http://127.0.0.1:8000/mercados", {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log("Fetched markets data:", data);
+          setMarkets(data);
+        })
+        .catch((error) => console.error("Error fetching markets:", error));
+    }
+  }, [isModalOpen]);
+
+  const IconRenderer = ({ icon, size = 96, color = "currentColor", strokeWidth = 2 }) => {
+    return (
+      <svg
+        width={84}
+        height={84}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {icon.map((node, index) => {
+          const [Element, attributes] = node;
+          return React.createElement(Element, { key: index, ...attributes });
+        })}
+      </svg>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
+      <header className="bg-gray-800 py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex justify-center items-center">
+          <h1 className="text-2xl font-bold text-indigo-200">BetMaster</h1>
+        </div>
+      </header>
+
+      <main className="flex-grow flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl w-full space-y-8">
+          <div className="text-center">
+            <h2 className="mt-6 text-4xl font-extrabold text-white">Escolha o esporte</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {["futebol", "basquete"].map((sport) => (
+              <Card
+                key={sport}
+                className={`bg-gray-800 border-2 transition-all cursor-pointer overflow-hidden ${
+                  "border-transparent hover:border-indigo-500"
+                }`}
+                onClick={() => handleSportSelection(sport)}
+              >
+                <CardContent className="p-6 flex items-center space-x-4">
+                  <div className={`p-3 rounded-full ${sport === "futebol" ? "bg-green-500" : "bg-orange-500"}`}>
+                    {sport === "futebol" ? (
+                      <IconRenderer icon={soccerBall} size={24} color="white" strokeWidth={2} />
+                    ) : (
+                      <IconRenderer icon={basketball} size={24} color="white" strokeWidth={2} />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-semibold text-white">
+                      {sport === "futebol" ? "Futebol" : "Basquete"}
+                    </h3>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} markets={markets} selectedSport={selectedSport} />
     </div>
   );
 }
