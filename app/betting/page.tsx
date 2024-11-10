@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronLeft, X } from "lucide-react";
 import Link from "next/link";
+import toast, { Toaster } from "react-hot-toast"
 
 export default function SoccerMarkets() {
   const searchParams = useSearchParams();
@@ -210,12 +211,12 @@ export default function SoccerMarkets() {
         point > 0
           ? [
               {
-                name: `Mais do que ${point} pontos`, // Change "gols" to "pontos"
+                name: `Mais do que ${point} ${sport === "futebol" ? "gols" : "pontos"}`, // Change "gols" to "pontos"
                 odds: getBestOdds("Over", "totals"),
                 kind: "totals" as const,
               },
               {
-                name: `Menos do que ${point} pontos`, // Change "gols" to "pontos"
+                name: `Menos do que ${point} ${sport === "futebol" ? "gols" : "pontos"}`, // Change "gols" to "pontos"
                 odds: getBestOdds("Under", "totals"),
                 kind: "totals" as const,
               },
@@ -261,10 +262,14 @@ export default function SoccerMarkets() {
         body: JSON.stringify({ valor: depositAmount }),
       });
 
-      if (!response.ok) throw new Error("Failed to deposit funds");
+      if (!response.ok){
+        toast.error("Erro ao depositar fundos");
+        throw new Error("Failed to deposit funds");
+      }
       const data = await response.json();
       setBalance(data.saldo); // Update balance after deposit
       setIsModalOpen(false);
+      toast.success("Depósito realizado com sucesso!");
     } catch (err) {
       console.error("Error depositing funds:", err);
     }
@@ -309,12 +314,12 @@ export default function SoccerMarkets() {
         );
 
         if (!response.ok) {
+          const data = await response.json();
+          toast.error(`Erro ao apostar em ${bet.selection}: ${data.message}`);
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // If successful, you might want to update the UI or show a success message
-        console.log(`Bet placed successfully for ${bet.selection}`);
-
+        toast.success(`Aposta feita em ${bet.selection}`);
         // Optionally refresh the balance after successful bet
         const balanceResponse = await fetch("http://127.0.0.1:8000/saldo");
         if (balanceResponse.ok) {
@@ -344,7 +349,11 @@ export default function SoccerMarkets() {
     
 
       if (!response.ok) throw new Error("Failed to deposit funds");
+
       const data = await response.json();
+      if(data.status === "erro") {
+        toast.error("Erro ao liquidar aposta: " + data.message);
+      }
       setIsModalOpen(false);
       setTriggerUpdate((prev) => !prev);
     } catch (err) {
@@ -354,6 +363,7 @@ export default function SoccerMarkets() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
+      <Toaster />
       <header className="bg-gray-800 py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
             <Link href="/">
