@@ -13,7 +13,6 @@ const Modal = ({ isOpen, onClose, markets, selectedSport }) => {
 
   if (!isOpen) return null;
 
-  // Filter markets based on the selected sport
   const filteredMarkets = markets.filter(market => {
     if (selectedSport === "futebol") {
       return market.group === "Soccer";
@@ -24,21 +23,17 @@ const Modal = ({ isOpen, onClose, markets, selectedSport }) => {
   });
 
   const handleMarketSelection = (market) => {
-    // Navigate to betting screen with market and sport information
     router.push(`/betting?market=${encodeURIComponent(market.key)}&sport=${encodeURIComponent(selectedSport)}`);
   };
   console.log(filteredMarkets)
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      
-      {/* Modal Content */}
+    
       <div className="relative bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-xl">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gray-900">
           <h2 className="text-2xl font-bold text-white">Selecione um mercado</h2>
           <Button
@@ -51,7 +46,6 @@ const Modal = ({ isOpen, onClose, markets, selectedSport }) => {
           </Button>
         </div>
 
-        {/* Market List */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           <div className="grid gap-4">
             {filteredMarkets.map((market) => (
@@ -82,7 +76,6 @@ const Modal = ({ isOpen, onClose, markets, selectedSport }) => {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t border-gray-700 bg-gray-900">
         </div>
       </div>
@@ -93,11 +86,10 @@ const Modal = ({ isOpen, onClose, markets, selectedSport }) => {
 export default function SportSelection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [markets, setMarkets] = useState([]);
-  const [selectedSport, setSelectedSport] = useState(""); // Track selected sport
+  const [selectedSport, setSelectedSport] = useState(""); 
 
   const handleSportSelection = (sport) => {
-    console.log(`Selected sport: ${sport}`);
-    setSelectedSport(sport); // Set the selected sport
+    setSelectedSport(sport); 
     setIsModalOpen(true);
   };
   

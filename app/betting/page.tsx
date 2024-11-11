@@ -30,12 +30,12 @@ export default function SoccerMarkets() {
   const [marketData, setMarketData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false); // Modal visibility state
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [betsMade, setBetsMade] = useState([]);
   const [triggerUpdate, setTriggerUpdate] = useState(false);
 
   useEffect(() => {
-    // Fetch the bets when the component mounts
+
     fetch("http://127.0.0.1:8000/apostas")
       .then((response) => response.json())
       .then((data) => setBetsMade(data))
@@ -48,7 +48,7 @@ export default function SoccerMarkets() {
         const response = await fetch("http://127.0.0.1:8000/saldo");
         if (!response.ok) throw new Error("Failed to fetch balance");
         const data = await response.json();
-        setBalance(data.saldo); // Use `saldo` based on the API response format
+        setBalance(data.saldo);
       } catch (err) {
         console.error("Error fetching balance:", err);
       }
@@ -150,10 +150,10 @@ export default function SoccerMarkets() {
       const homeTeam = event.home_team;
       const awayTeam = event.away_team;
 
-      // Get the best odds and corresponding point from the same market and bookmaker
       const getBestOddsAndPoint = (outcomeName: string, marketType: string) => {
         let bestOdds = 0;
         let point = 0;
+        let optionBookmaker = "";
 
         event.bookmakers.forEach((bookmaker: any) => {
           const market = bookmaker.markets.find(
@@ -165,14 +165,14 @@ export default function SoccerMarkets() {
             );
             if (outcome && outcome.price > bestOdds) {
               bestOdds = outcome.price;
-              bookmaker = outcome.bookmaker;
+              optionBookmaker = bookmaker.key;
               if (marketType === "totals") {
                 point = outcome.point;
               }
             }
           }
         });
-        return { bestOdds, point };
+        return { bestOdds, point, optionBookmaker };
       };
 
       const getBestOdds = (outcomeName: string, marketType: string) => {
@@ -180,22 +180,27 @@ export default function SoccerMarkets() {
         return bestOdds.toFixed(2);
       };
 
-      // Get the point for "totals" option
+      const getBookmaker = (outcomeName: string, marketType: string) => {
+        const { optionBookmaker } = getBestOddsAndPoint(outcomeName, marketType);
+        return optionBookmaker;
+      };
+
       const { bestOdds: _, point } = getBestOddsAndPoint("Over", "totals"); // Use "Over" to get the point
 
-      // Separate options by type
       const h2hOptions = [
         {
           name: homeTeam,
           odds: getBestOdds(homeTeam, "h2h"),
+          bookmaker: getBookmaker(homeTeam, "h2h"),
           kind: "h2h" as const,
         },
-        // Only show "Draw" if sport is "futebol"
+
         ...(sport === "futebol"
           ? [
               {
                 name: "Draw",
                 odds: getBestOdds("Draw", "h2h"),
+                bookmaker: getBookmaker("Draw", "h2h"),
                 kind: "h2h" as const,
               },
             ]
@@ -203,6 +208,7 @@ export default function SoccerMarkets() {
         {
           name: awayTeam,
           odds: getBestOdds(awayTeam, "h2h"),
+          bookmaker: getBookmaker(awayTeam, "h2h"),
           kind: "h2h" as const,
         },
       ];
@@ -211,13 +217,15 @@ export default function SoccerMarkets() {
         point > 0
           ? [
               {
-                name: `Mais do que ${point} ${sport === "futebol" ? "gols" : "pontos"}`, // Change "gols" to "pontos"
+                name: `Mais do que ${point} ${sport === "futebol" ? "gols" : "pontos"}`, 
                 odds: getBestOdds("Over", "totals"),
+                bookmaker: getBookmaker("Over", "totals"),
                 kind: "totals" as const,
               },
               {
-                name: `Menos do que ${point} ${sport === "futebol" ? "gols" : "pontos"}`, // Change "gols" to "pontos"
+                name: `Menos do que ${point} ${sport === "futebol" ? "gols" : "pontos"}`,
                 odds: getBestOdds("Under", "totals"),
+                bookmaker: getBookmaker("Under", "totals"),
                 kind: "totals" as const,
               },
             ]
@@ -267,7 +275,7 @@ export default function SoccerMarkets() {
         throw new Error("Failed to deposit funds");
       }
       const data = await response.json();
-      setBalance(data.saldo); // Update balance after deposit
+      setBalance(data.saldo); 
       setIsModalOpen(false);
       toast.success("Depósito realizado com sucesso!");
     } catch (err) {
@@ -279,28 +287,36 @@ export default function SoccerMarkets() {
   };
 
   const handleBetPlacement = async () => {
-    // Loop through selectedBets and send requests for each bet
     for (const bet of selectedBets) {
-      // Find the corresponding market data for this bet
       const market = markets.find((m) => m.id === bet.marketId);
       if (!market) continue;
-
-      // Find the corresponding option (either in h2hOptions or totalsOptions)
+      
       const option = [...market.h2hOptions, ...market.totalsOptions].find(
         (opt) => opt.name === bet.selection
       );
       if (!option) continue;
+  
+      let transformedOutcome = bet.selection.startsWith("Mais do que") 
+        ? bet.selection.replace("Mais do que", "Over")
+        : bet.selection;
 
+      transformedOutcome = bet.selection.startsWith("Menos do que") 
+      ? bet.selection.replace("Menos do que", "Under")
+      : bet.selection;
+
+        
       const body = {
         id: bet.marketId,
-        bookmaker: option.bookmaker || "betmgm", // Use the bookmaker from the option if available
-        market: option.kind, // 'h2h' or 'totals'
-        outcome: bet.selection,
+        bookmaker: option.bookmaker,
+        market: option.kind,
+        outcome: transformedOutcome,
         multiplier: parseFloat(bet.odds),
         valor: parseFloat(bet.stake),
-        sport: marketKey, // Use the sport from URL params or default
+        sport: marketKey,
       };
-
+      
+      console.log(body);
+      
       try {
         const response = await fetch(
           "http://127.0.0.1:8000/apostas/registrar",
@@ -312,28 +328,26 @@ export default function SoccerMarkets() {
             body: JSON.stringify(body),
           }
         );
-
+        
         if (!response.ok) {
           const data = await response.json();
-          toast.error(`Erro ao apostar em ${bet.selection}: ${data.message}`);
+          toast.error(`Erro ao apostar em ${transformedOutcome}: ${data.message}`);
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        toast.success(`Aposta feita em ${bet.selection}`);
-        // Optionally refresh the balance after successful bet
+        
+        toast.success(`Aposta feita em ${transformedOutcome}`);
+        
         const balanceResponse = await fetch("http://127.0.0.1:8000/saldo");
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json();
           setBalance(balanceData.saldo);
         }
+        
         setTriggerUpdate((prev) => !prev);
       } catch (error) {
-        console.error(`Error placing bet for ${bet.selection}:`, error);
-        // You might want to show an error message to the user here
+        console.error(`Error placing bet for ${transformedOutcome}:`, error);
       }
     }
-
-    // Clear selected bets after all bets are placed
     setSelectedBets([]);
   };
 
@@ -437,7 +451,7 @@ export default function SoccerMarkets() {
             <div className="lg:col-span-2">
               <ScrollArea className="h-[calc(100vh-300px)] pr-4">
                 {markets.map((market) => {
-                  // Format commence_time into a readable string
+
                   const formattedTime = new Date(
                     market.commence_time
                   ).toLocaleString();
